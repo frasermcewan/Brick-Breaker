@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Fraser McEwan BlockBreaker</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="viewport" content="width=device-width">
+        <link rel="icon" sizes="192x192" href="TabIcon.png" />
+        <link rel="apple-touch-icon" href="TabIcon.png" />
+        <link rel="shortcut icon" href="TabIcon.png" type="image/x-icon" />
+
+        <style>
+
+            * {
+                margin: 0px;
+                padding: 0px;
+                border: 0px;
+            }
+
+
+
+
+            canvas {
+                background-color: grey;
+                height: 100%;
+
+
+
+            }
+
+
+            html, body {
+                -webkit-user-select: none;
+                -moz-user-select: -moz-none;
+                -ms-user-select: none;
+                height: 100%;
+                min-height: 100%;
+                overflow:hidden;
+            }
+
+
+
+            main {
+
+                height: 100%;
+
+            }
+
+        </style>
+    </head>
+    <body>
+
+        <main id="main">
+            <canvas id="myCanvas">
+                Sorry, your browser doesn't do canvas
+            </canvas>
+        </main>
+
+        <script>
+
+
+
+
+
+            var ball = document.getElementById("ball"),
+                    canvas = document.getElementById("myCanvas"),
+                    ballXPos = main.offsetWidth / 2 ,
+                    ballYPos = main.offsetHeight / 2  ,
+                    radius = 10,
+                    verticalSpeed = 16,
+                    horizontalSpeed = 0,
+                    paddleHeight = 0,
+                    paddleW = main.offsetWidth / 3,
+                    paddleX = main.offsetWidth / 2 - (paddleW / 2),
+                    paddleV = 1,
+                    canvasRunning = true,
+                    collisionDetection = false,
+                    blocks,
+                    brickW = (main.offsetWidth / 7) - 4,
+                    brickH = 20,
+                    brickS = 4,
+                    blockC = ['#4D11F0', '#1133F0', '#1172F0', '#11F0EC'],
+                    rowH = brickH + brickS,
+                    columnW = brickW + brickS,
+                    rowEnd,
+                    colEnd,
+                    score = 0,
+                    ctx = canvas.getContext("2d"),
+                    intervalObject;
+
+
+
+
+            blocks = new Array(4);
+            for (i = 0; i < 4; i++) {
+                blocks[i] = new Array(7);
+                for (j = 0; j < 7; j++) {
+                    blocks[i][j] = 1;
+                }
+            }
+
+
+            canvasPaint = function () {
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#11F020";
+                ctx.beginPath();
+                ctx.arc(ballXPos, ballYPos, radius, 0, Math.PI * 2, false);
+                ctx.closePath();
+                ctx.fill();
+
+
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 16px Arial";
+                ctx.beginPath();
+                ctx.fillText(score, main.offsetHeight / 2, main.offsetWidth / 2);
+                ctx.closePath();
+
+
+
+                ctx.fillStyle = "orange";
+                ctx.beginPath();
+                ctx.fillRect(paddleX, canvas.height - 30, canvas.width / 3, 15);
+                ctx.closePath();
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+
+
+                for (i = 0; i < 4; i++) {
+                    ctx.fillStyle = blockC[i];
+                    for (j = 0; j < 7; j++) {
+                        if (blocks[i][j] === 1) {
+                            ctx.fillRect((j * (brickW + brickS)) + brickS,
+                                    (i * (brickH + brickS)) + brickS,
+                                    brickW, brickH);
+                        }
+                    }
+                }
+
+
+
+
+            };
+            moveAndPaint = function () {
+
+                fitToContainer(main, canvas);
+                 canvasPaint();
+
+                /** Was orginally using math.round but was getting wrong values and this was creating 
+                 *   Out of bounds errors, now using .floor to round down and get correct values **/
+                rowEnd = Math.floor(ballYPos / rowH);
+                colEnd = Math.floor(ballXPos / columnW);
+
+                //   Block collision, took ages and many different parameters but i think its there
+                if (ballYPos < 4 * rowH && rowEnd >= 0 && colEnd >= 0 && blocks[rowEnd][colEnd] === 1) {
+
+                    verticalSpeed = -verticalSpeed;
+                    score = score + 1;
+                    blocks[rowEnd][colEnd] = "";
+                    if (score === 28) {
+                       
+                        winGame();
+                    }
+                    ;
+
+                }
+                
+        
+                //Code for ball hitting the bottom 
+                 if (ballYPos + verticalSpeed + radius > canvas.height) {
+
+                //Code to reflect the ball of the bottom wall here but taken out to add feature
+                // if you wish to see the ball reflect uncomment the line below and comment the three
+                // below it please
+                //  verticalSpeed = -verticalSpeed;
+                
+                    verticalSpeed = 0;
+                    horizontalSpeed = 0;
+                    endGame();
+
+
+                }
+                //Wall collisions
+                if (ballXPos + horizontalSpeed + radius > canvas.width) {
+
+
+                    horizontalSpeed = -horizontalSpeed;
+
+                }
+                
+                if (ballXPos + horizontalSpeed - radius < 0) {
+                    horizontalSpeed = -horizontalSpeed;
+                }
+
+
+
+                if (ballYPos + verticalSpeed - radius < 0) {
+                    verticalSpeed = -verticalSpeed;
+                }
+
+                //Paddle Collision
+                if ((ballXPos + horizontalSpeed > paddleX && ballXPos < paddleX + canvas.width / 3) && (ballYPos + verticalSpeed > canvas.height - 35))
+                {
+                    verticalSpeed = -verticalSpeed;
+                    //Model Paddle reflection
+                    var xpos = ballXPos - paddleX - (paddleW / 2);
+                    horizontalSpeed = xpos / 15;
+
+                }
+                
+                //Update Posistion
+
+                ballYPos += verticalSpeed;
+                ballXPos += horizontalSpeed;
+                
+
+            };
+
+            // Code for key movement on desktop
+            window.addEventListener("keyup", function (evt) {
+
+
+                // Left key movement
+                if (evt.keyCode === 37 && paddleX > 0) {
+
+                    paddleX = paddleX - 45;
+                    // Right key movement
+                } else if (evt.keyCode === 39 && paddleX + canvas.width / 3 < canvas.width) {
+
+                    paddleX = paddleX + 45;
+
+                }
+            });
+
+
+            //Using device motion to use motion control on phone
+            if (window.DeviceMotionEvent) {
+
+                window.addEventListener('devicemotion', function (event) {
+                    var x = event.accelerationIncludingGravity.x / 9.80665;
+                    //Checking to see what OS the user is using to fix wrong paddle movement          
+                    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+                        if (x < -0.1 && paddleX > 0) {
+                            paddleX = paddleX - 8;
+                        } else {
+                            if (x > 0.2 && paddleX + canvas.width / 3 < canvas.width) {
+                                paddleX = paddleX + 8;
+                            }
+
+                        }
+                    }
+                    //If user is using Android it reverses paddle direction to work with droid
+                    if (navigator.userAgent.match(/Android/i)) {
+
+                        if (x > 0.1 && paddleX > 0)
+                        {
+
+                            paddleX = paddleX - 8;
+                        }
+
+                        else {
+                            if (x < -0.2 && paddleX + canvas.width / 3 < canvas.width)
+                            {
+                                paddleX = paddleX + 8;
+                            }
+
+                        }
+
+                    }
+                    ;
+                });
+
+            }
+            ;
+
+            //Function taken from Marks Code to fitToContainer
+            function fitToContainer(main, canvas) {
+                canvas.width = main.offsetWidth;
+                canvas.height = main.offsetHeight;
+
+            }
+            ;
+
+            //Displays when the user has not completed the game
+            function endGame() {
+                 window.clearInterval(intervalObject);
+               
+                  
+                ctx.fillStyle = "Red";
+                ctx.font = "bold 16px Arial";
+                ctx.beginPath();
+                
+                ctx.fillText("Unlucky, your score is " + score, 50, 200);
+                ctx.fillText(" Refresh to play again!",50,220);
+                
+                ctx.closePath();
+            }
+
+
+
+
+            function winGame() {
+                //Displays when the user wins
+                window.clearInterval(intervalObject);
+              
+                ctx.fillStyle = "Orange";
+                ctx.font = "bold 16px Arial";
+                ctx.beginPath();
+                ctx.fillText("You Win", 50, 200);
+                ctx.fillText("Refresh to play again!",50,220);
+                ctx.closePath();
+            }
+
+            window.addEventListener("load", canvasPaint);
+            window.addEventListener("resize", canvasPaint);
+            intervalObject = window.setInterval(moveAndPaint, 1000 / 30);
+        </script>
+
+    </body>
+</html>
